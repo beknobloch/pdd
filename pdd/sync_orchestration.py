@@ -26,10 +26,9 @@ import logging
 MAX_CONSECUTIVE_TESTS = 3  # Allow up to 3 consecutive test attempts
 MAX_TEST_EXTEND_ATTEMPTS = 2  # Allow up to 2 attempts to extend tests for coverage
 MAX_CONSECUTIVE_CRASHES = 3  # Allow up to 3 consecutive crash attempts (Bug #157 fix)
-DEFAULT_STEER_TIMEOUT_S = 8.0
 
 # --- Real PDD Component Imports ---
-from .sync_tui import SyncApp
+from .sync_tui import SyncApp, DEFAULT_STEER_TIMEOUT_S
 from .sync_determine_operation import (
     sync_determine_operation,
     get_pdd_file_paths,
@@ -907,6 +906,8 @@ def sync_orchestration(
     context_config: Optional[Dict[str, str]] = None,
     context_override: Optional[str] = None,
     confirm_callback: Optional[Callable[[str, str], bool]] = None,
+    no_steer: bool = False,
+    steer_timeout: float = DEFAULT_STEER_TIMEOUT_S,
 ) -> Dict[str, Any]:
     """
     Orchestrates the complete PDD sync workflow with parallel animation.
@@ -1071,7 +1072,7 @@ def sync_orchestration(
                             quiet,
                             skip_tests,
                             skip_verify,
-                            timeout_s=DEFAULT_STEER_TIMEOUT_S,
+                            timeout_s=steer_timeout,
                     )
                     if should_abort:
                         errors.append("User aborted sync via steering.")
@@ -1684,7 +1685,8 @@ def sync_orchestration(
             example_color_ref=example_box_color_ref,
             tests_color_ref=tests_box_color_ref,
             stop_event=stop_event,
-            progress_callback_ref=progress_callback_ref
+            progress_callback_ref=progress_callback_ref,
+            no_steer=no_steer,
         )
 
         # Store app reference so worker can access request_confirmation
