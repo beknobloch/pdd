@@ -74,6 +74,18 @@ def split(
     show_default=True,
     help="Directory containing user story YAML files (used with --run-user-stories).",
 )
+@click.option(
+    "--timeout-adder",
+    type=float,
+    default=0.0,
+    help="Additional seconds to add to each step's timeout (agentic mode only).",
+)
+@click.option(
+    "--no-github-state",
+    is_flag=True,
+    default=False,
+    help="Disable GitHub state persistence (agentic mode only).",
+)
 @click.pass_context
 @track_cost
 def change(
@@ -85,6 +97,8 @@ def change(
     csv: bool,
     run_user_stories: bool,
     user_stories_dir: str,
+    timeout_adder: float,
+    no_github_state: bool,
 ) -> Optional[Tuple[Any, float, str]]:
     """
     Modify an input prompt file based on a change prompt or issue.
@@ -167,7 +181,9 @@ def change(
             success, message, cost, model, changed_files = run_agentic_change(
                 issue_url=issue_url,
                 verbose=verbose,
-                quiet=quiet
+                quiet=quiet,
+                timeout_adder=timeout_adder,
+                use_github_state=not no_github_state
             )
 
             # Display results using click.echo as requested
