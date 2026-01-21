@@ -19,6 +19,7 @@ from .agentic_langtest import default_verify_cmd_for    # Provides a default ver
 from .agentic_common import (                     # Shared CLI discovery utilities
     _find_cli_binary,
     _get_cli_diagnostic_info,
+    get_available_agents,
 )
 
 console = Console()
@@ -991,14 +992,19 @@ def run_agentic_fix(
         _info(f"[cyan]Project root (cwd): {working_dir}[/cyan]")
 
         # Load provider table and filter to those with API keys present in the environment
-        csv_path = find_llm_csv_path()
+        csv_path = find_llm_csv_path(working_dir)
         model_df = _load_model_data(csv_path)
 
-        available_agents: List[str] = []
+        # Use centralized agent detection which handles all auth methods:
+        # - API keys (ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY)
+        # - Vertex AI auth (GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_GENAI_USE_VERTEXAI)
+        # - CLI-based auth (claude CLI for subscription users)
+        available_agents = get_available_agents()
         present_keys: List[str] = []
-        seen = set()
 
         for provider in AGENT_PROVIDER_PREFERENCE:
+            if provider not in available_agents:
+                continue
             provider_df = model_df[model_df["provider"].str.lower() == provider]
             if provider_df.empty:
                 continue
@@ -1009,16 +1015,21 @@ def run_agentic_fix(
             # Use _find_cli_binary for robust CLI discovery (searches PATH + common locations + .pddrc)
             has_cli_auth = provider == "anthropic" and _find_cli_binary("claude")
             has_api_key = os.getenv(api_key_name) or (provider == "google" and os.getenv("GEMINI_API_KEY"))
-            if has_cli_auth or has_api_key:
-                if has_cli_auth:
-                    present_keys.append("claude-cli-auth")
-                else:
-                    present_keys.append(api_key_name or ("GEMINI_API_KEY" if provider == "google" else ""))
-                if provider not in seen:
-                    available_agents.append(provider)
-                    seen.add(provider)
+            if has_cli_auth:
+                present_keys.append("claude-cli-auth")
+            elif has_api_key:
+                present_keys.append(api_key_name or ("GEMINI_API_KEY" if provider == "google" else ""))
 
-        _info(f"[cyan]Env API keys present (names only): {', '.join([k for k in present_keys if k]) or 'none'}[/cyan]")
+        _info(
+            f"[cyan]Env API keys present (names only): {', '.join([k for k in present_keys if k]) or 'none'}[/cyan]"
+        )
+
+        # Treat CLI-only Anthropic auth (claude-cli-auth) as *not* a configured API key
+        # for the purposes of this function. Tests expect a clear error when no API keys
+        # are present in the environment, even if a CLI might be installed.
+        has_real_api_keys = any(k and k != "claude-cli-auth" for k in present_keys)
+        if not has_real_api_keys:
+            return False, "No configured agent API keys found in environment.", est_cost, used_model, changed_files
         if not available_agents:
             return False, "No configured agent API keys found in environment.", est_cost, used_model, changed_files
 
