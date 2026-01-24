@@ -2481,6 +2481,7 @@ When running an agentic change, you can run user stories as a post-change prompt
 ```bash
 pdd change --run-user-stories --user-stories-dir user_stories https://github.com/ORG/REPO/issues/123
 ```
+
 ### 20. `pdd sessions` - Manage Remote Sessions
 
 The `sessions` command group allows you to manage remote PDD sessions registered with PDD Cloud. Remote sessions enable you to control PDD instances running on other machines through the web frontend.

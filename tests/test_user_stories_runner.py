@@ -78,7 +78,6 @@ def test_run_user_story_fails_on_missing_required_text(tmp_path: Path) -> None:
     assert result.passed is False
     assert "Missing required text" in result.reason
 
-
 def test_load_user_story_valid_yaml(tmp_path: Path) -> None:
     """Test loading a valid user story YAML file."""
     story_file = tmp_path / "test_story.yaml"

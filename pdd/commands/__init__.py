@@ -50,3 +50,4 @@ def register_commands(cli: click.Group) -> None:
     cli.add_command(user_stories_group)
     cli.add_command(auth_group)
     cli.add_command(sessions)
+    cli.add_command(user_stories_group)
