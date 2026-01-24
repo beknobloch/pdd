@@ -1991,6 +1991,59 @@ pdd connect --allow-remote --token "your-secret-token"
 
 **When to use**: Use `connect` when you prefer a graphical interface for working with PDD, when demonstrating PDD to others, or when integrating PDD with other tools that can communicate via REST APIs.
 
+### 18. user-stories
+
+Prompt unit testing via user stories. This provides a lightweight regression safeguard for prompt changes: you define user stories as test cases, and PDD uses an LLM to “play through” each story against the referenced prompt templates and then evaluates simple pass/fail assertions.
+
+```bash
+pdd [GLOBAL OPTIONS] user-stories test [OPTIONS]
+```
+
+Options:
+- `--dir PATH`: Directory containing user story YAML files (default: `user_stories/`)
+- `--story STORY_ID`: Run only the story whose `id:` matches `STORY_ID`
+
+Examples:
+```bash
+# Run all stories in user_stories/
+pdd user-stories test
+
+# Run one story by id (global flags like --verbose must come before the subcommand)
+pdd --verbose user-stories test --story sync_smoke
+
+# Use a custom directory
+pdd user-stories test --dir path/to/user_stories
+```
+
+**User story file format**:
+User stories live in `user_stories/*.yml` or `user_stories/*.yaml`. Minimal schema:
+
+```yaml
+id: sync_smoke
+title: Sync command smoke test (prompt-level)
+prompts:
+  - pdd/prompts/sync_tui_python.prompt
+steps:
+  - user: "Run `pdd sync sync_tui` in a normal terminal session"
+assertions:
+  must_include:
+    - "class SyncApp"
+    - "ThreadSafeRedirector"
+    - "TUIStdinRedirector"
+  must_not_include:
+    - "Traceback"
+model:
+  min_strength: 0.7
+  temperature: 0.0
+```
+
+**Integrating with `pdd change` (optional gate)**:
+When running an agentic change, you can run user stories as a post-change prompt regression check:
+
+```bash
+pdd change --run-user-stories --user-stories-dir user_stories https://github.com/ORG/REPO/issues/123
+```
+
 ## Example Review Process
 
 When the global `--review-examples` option is used with any command, PDD will present potential few-shot examples that might be used for the current operation. The review process follows these steps:

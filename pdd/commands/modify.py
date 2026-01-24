@@ -62,6 +62,18 @@ def split(
 @click.option("--budget", type=float, default=5.0, help="Budget for the operation.")
 @click.option("--output", help="Output path.")
 @click.option("--csv", is_flag=True, help="Use CSV input for batch processing.")
+@click.option(
+    "--run-user-stories",
+    is_flag=True,
+    default=False,
+    help="After an agentic change, run user stories as a prompt regression check.",
+)
+@click.option(
+    "--user-stories-dir",
+    default="user_stories",
+    show_default=True,
+    help="Directory containing user story YAML files (used with --run-user-stories).",
+)
 @click.pass_context
 @track_cost
 def change(
@@ -71,6 +83,8 @@ def change(
     budget: float,
     output: Optional[str],
     csv: bool,
+    run_user_stories: bool,
+    user_stories_dir: str,
 ) -> Optional[Tuple[Any, float, str]]:
     """
     Modify an input prompt file based on a change prompt or issue.
@@ -167,6 +181,32 @@ def change(
                     click.echo("Changed files:")
                     for f in changed_files:
                         click.echo(f"  - {f}")
+
+            # Optional prompt regression check via user stories (MVP integration)
+            if success and run_user_stories:
+                from ..user_stories_runner import load_user_stories, run_user_stories as _run_user_stories
+
+                repo_root = Path.cwd()
+                story_pairs = load_user_stories(repo_root / user_stories_dir)
+                stories = [s for _, s in story_pairs]
+                if not stories:
+                    if not quiet:
+                        click.echo(f"No user stories found in: {user_stories_dir} (skipping)")
+                else:
+                    results = _run_user_stories(repo_root, stories, verbose=verbose)
+                    failed = [r for r in results if not r.passed]
+                    extra_cost = sum(r.cost for r in results)
+                    cost += extra_cost
+                    if failed:
+                        if not quiet:
+                            click.echo("")
+                            click.echo("User stories (post-change)")
+                            for r in results:
+                                click.echo(f"- {'PASS' if r.passed else 'FAIL'} {r.story_id}" + (f" ({r.reason})" if r.reason else ""))
+                            click.echo("")
+                        raise click.ClickException(
+                            f"User story regression detected: {len(failed)} failed (ran {len(results)})."
+                        )
             
             return message, cost, model
 

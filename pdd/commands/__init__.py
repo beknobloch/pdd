@@ -13,6 +13,7 @@ from .misc import preprocess
 from .report import report_core
 from .templates import templates_group
 from .utility import install_completion_cmd, verify
+from .user_stories import user_stories_group
 
 def register_commands(cli: click.Group) -> None:
     """Register all subcommands with the main CLI group."""
@@ -42,3 +43,4 @@ def register_commands(cli: click.Group) -> None:
     # Using add_command is cleaner if it works for the structure.
     cli.add_command(templates_group)
     cli.add_command(connect)
+    cli.add_command(user_stories_group)
