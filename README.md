@@ -612,6 +612,14 @@ Commands:
 - `pdd detect --stories` runs the validation suite.
 - `pdd change` runs story validation after prompt modifications and fails if any story fails.
 - `pdd fix user_stories/story__*.md` applies a single story to prompts and re-validates it.
+- `pdd test <prompt_1.prompt> [prompt_2.prompt ...]` generates a `story__*.md` file and links those prompts.
+- `pdd test user_stories/story__*.md` updates prompt links for an existing story file.
+
+Story prompt linkage:
+- Stories may include optional metadata to scope validation to a subset of prompts:
+  `<!-- pdd-story-prompts: prompts/a_python.prompt, prompts/b_python.prompt -->`
+- If metadata is missing, `pdd detect --stories` validates against the full prompt set.
+- In `--stories` mode, when `detect` identifies impacted prompts, PDD caches links back into the story metadata for future deterministic runs.
 
 Template:
 - See `user_stories/story__template.md` for a starter format.
@@ -1606,6 +1614,23 @@ Options:
 - `--target-coverage FLOAT`: Desired code coverage percentage to achieve (default is 90.0).
 - `--merge`: When used with --existing-tests, merges new tests with existing test file instead of creating a separate file.
 
+#### Story Mode
+
+Generate or update user stories and link them to touched prompts.
+
+```
+pdd [GLOBAL OPTIONS] test prompts/upload_python.prompt prompts/notify_python.prompt
+pdd [GLOBAL OPTIONS] test user_stories/story__my_flow.md
+```
+
+Behavior:
+- If input is one or more `.prompt` files, PDD generates `user_stories/story__<name>.md`.
+- The generated story metadata links exactly the provided prompt files.
+- If `pdd-story-prompts` metadata already exists and resolves cleanly, PDD keeps it unchanged.
+- If metadata is missing (or stale), PDD runs prompt detection and writes:
+  `<!-- pdd-story-prompts: prompt_a_python.prompt, prompt_b_python.prompt -->`
+- This enables deterministic prompt-subset validation in `pdd detect --stories`.
+
 #### Providing Command-Specific Context
 
 While prompts are the primary source of instructions, some PDD commands (like `test` and `example`) can be further guided by project-specific context files. These commands may automatically look for conventional files (e.g., `context/test.prompt`, `context/example.prompt`) in the current working directory during their internal prompt preprocessing phase.
@@ -2119,6 +2144,8 @@ Options:
 - `--prompts-dir DIR`: Directory containing `.prompt` files (stories mode only).
 - `--include-llm`: Include `*_llm.prompt` files in stories mode.
 - `--fail-fast/--no-fail-fast`: Stop on the first failing story in stories mode (default: `--fail-fast`).
+  - In stories mode, PDD reads optional `pdd-story-prompts` metadata from each story to run prompt-subset (multi-prompt) validation.
+  - If metadata is missing, validation uses all prompts and can auto-cache detected prompt links in the story file.
 
 Example:
 ```
